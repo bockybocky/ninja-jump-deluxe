@@ -176,6 +176,7 @@
             jump: () => { playTone(440, 0.12, 'square', 0.08); playTone(660, 0.1, 'square', 0.06); },
             dbljump: () => { playTone(660, 0.1, 'square', 0.08); playTone(880, 0.12, 'square', 0.07); },
             coin: () => { playTone(988, 0.08, 'sine', 0.10); setTimeout(() => playTone(1319, 0.12, 'sine', 0.10), 60); },
+            candy: () => { playTone(1200, 0.08, 'sine', 0.12); setTimeout(() => playTone(1500, 0.1, 'sine', 0.10), 50); setTimeout(() => playTone(1800, 0.12, 'sine', 0.08), 100); },
             powerup: () => { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => playTone(f, 0.15, 'sine', 0.10), i * 80)); },
             hit: () => { playTone(120, 0.3, 'sawtooth', 0.15); playTone(80, 0.4, 'sawtooth', 0.10); },
             milestone: () => { [784, 988, 1175, 1568].forEach((f, i) => setTimeout(() => playTone(f, 0.2, 'sine', 0.1), i * 100)); },
@@ -208,6 +209,7 @@
         // --- Entities ---
         let obstacles = [];
         let coinItems = [];
+        let candyItems = [];
         let powerups = [];
         let particles = [];
         let bgLayers = [];
@@ -268,6 +270,7 @@
         // --- Obstacle / Item Spawning ---
         let spawnTimer = 0;
         let coinSpawnTimer = 0;
+        let candySpawnTimer = 0;
         let powerupSpawnTimer = 0;
 
         function getSpeed() { return baseSpeed * speedMultiplier; }
@@ -313,6 +316,29 @@
             powerups.push({ x: BASE_W + 20, y: GROUND_Y - 50 - Math.random() * 40, w: 22, h: 22, type: t, frame: 0 });
         }
 
+        // --- Candy Spawning ---
+        const CANDY_TYPES = [
+            { name: 'lollipop', emoji: '🍭', color1: '#ff69b4', color2: '#ff1493', points: 3 },
+            { name: 'wrapped', emoji: '🍬', color1: '#00e5ff', color2: '#2979ff', points: 3 },
+            { name: 'chocolate', emoji: '🍫', color1: '#d2691e', color2: '#8b4513', points: 3 },
+        ];
+
+        function spawnCandy() {
+            const ctype = CANDY_TYPES[Math.floor(Math.random() * CANDY_TYPES.length)];
+            const baseY = 60 + Math.random() * (GROUND_Y - 140);
+            candyItems.push({
+                x: BASE_W + 30,
+                y: baseY,
+                baseY: baseY,
+                w: 24, h: 24,
+                type: ctype,
+                frame: Math.random() * Math.PI * 2,
+                speed: 1.5 + Math.random() * 1.5, // independent flying speed
+                waveAmp: 15 + Math.random() * 20,
+                waveFreq: 0.03 + Math.random() * 0.02,
+            });
+        }
+
         // --- Particles ---
         function emitDust(x, y) {
             for (let i = 0; i < 3; i++) {
@@ -346,6 +372,25 @@
                 particles.push({
                     x, y, dx: Math.cos(angle) * 2, dy: Math.sin(angle) * 2,
                     life: 20, maxLife: 20, r: 2, color: 'rgba(255,215,0,', type: 'sparkle'
+                });
+            }
+        }
+
+        function emitCandyParticles(x, y, color1) {
+            for (let i = 0; i < 12; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 1.5 + Math.random() * 3;
+                const colors = [
+                    'rgba(255,105,180,', 'rgba(0,229,255,', 'rgba(255,215,0,',
+                    'rgba(255,100,100,', 'rgba(150,255,150,'
+                ];
+                particles.push({
+                    x, y,
+                    dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed,
+                    life: 25 + Math.random() * 15, maxLife: 40,
+                    r: 2 + Math.random() * 3,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    type: 'sparkle'
                 });
             }
         }
@@ -730,6 +775,117 @@
             }
         }
 
+        function drawCandy(c) {
+            c.frame += 0.05;
+            const floatY = Math.sin(c.frame * 3) * c.waveAmp * 0.3;
+            const cx = c.x + c.w / 2;
+            const cy = c.y + c.h / 2 + floatY;
+
+            ctx.save();
+            ctx.translate(cx, cy);
+
+            // Outer glow
+            const glow = ctx.createRadialGradient(0, 0, 6, 0, 0, 20);
+            glow.addColorStop(0, c.type.color1 + '55');
+            glow.addColorStop(1, c.type.color1 + '00');
+            ctx.fillStyle = glow;
+            ctx.beginPath();
+            ctx.arc(0, 0, 20, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Rotation
+            const rot = Math.sin(c.frame * 2) * 0.3;
+            ctx.rotate(rot);
+
+            if (c.type.name === 'lollipop') {
+                // Stick
+                ctx.strokeStyle = '#ddd';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(0, 5);
+                ctx.lineTo(0, 14);
+                ctx.stroke();
+                // Swirl head
+                const grad = ctx.createRadialGradient(-2, -2, 2, 0, 0, 9);
+                grad.addColorStop(0, '#fff');
+                grad.addColorStop(0.4, c.type.color1);
+                grad.addColorStop(1, c.type.color2);
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(0, -1, 9, 0, Math.PI * 2);
+                ctx.fill();
+                // Swirl lines
+                ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(0, -1, 5, c.frame * 2, c.frame * 2 + Math.PI);
+                ctx.stroke();
+            } else if (c.type.name === 'wrapped') {
+                // Wrapper body
+                const grad = ctx.createLinearGradient(-8, -6, 8, 6);
+                grad.addColorStop(0, c.type.color1);
+                grad.addColorStop(0.5, '#fff');
+                grad.addColorStop(1, c.type.color2);
+                ctx.fillStyle = grad;
+                roundRectPath(ctx, -8, -6, 16, 12, 3);
+                ctx.fill();
+                // Wrapper twist ends
+                ctx.strokeStyle = c.type.color1;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(-8, 0); ctx.lineTo(-13, -4);
+                ctx.moveTo(-8, 0); ctx.lineTo(-13, 4);
+                ctx.moveTo(8, 0); ctx.lineTo(13, -4);
+                ctx.moveTo(8, 0); ctx.lineTo(13, 4);
+                ctx.stroke();
+            } else {
+                // Chocolate bar
+                const grad = ctx.createLinearGradient(-9, -6, 9, 6);
+                grad.addColorStop(0, c.type.color1);
+                grad.addColorStop(1, c.type.color2);
+                ctx.fillStyle = grad;
+                roundRectPath(ctx, -9, -6, 18, 12, 2);
+                ctx.fill();
+                // Segments
+                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                ctx.lineWidth = 0.8;
+                ctx.beginPath();
+                ctx.moveTo(-3, -6); ctx.lineTo(-3, 6);
+                ctx.moveTo(3, -6); ctx.lineTo(3, 6);
+                ctx.stroke();
+                // Shine
+                ctx.fillStyle = 'rgba(255,255,255,0.25)';
+                roundRectPath(ctx, -8, -5, 6, 3, 1);
+                ctx.fill();
+            }
+
+            // Sparkle trail
+            const sparkleA = (Math.sin(c.frame * 6) + 1) / 2 * 0.8;
+            ctx.fillStyle = `rgba(255,255,255,${sparkleA})`;
+            ctx.beginPath();
+            ctx.arc(8 + Math.sin(c.frame * 4) * 3, -6 + Math.cos(c.frame * 5) * 3, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(-6 + Math.cos(c.frame * 3) * 4, 5 + Math.sin(c.frame * 4) * 2, 1, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function roundRectPath(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+        }
+
         function drawPowerup(p) {
             p.frame += 0.04;
             const float = Math.sin(p.frame * 3) * 4;
@@ -963,6 +1119,13 @@
                 coinSpawnTimer = 120 + Math.random() * 100;
             }
 
+            // Spawn candy
+            candySpawnTimer--;
+            if (candySpawnTimer <= 0) {
+                spawnCandy();
+                candySpawnTimer = 180 + Math.random() * 200;
+            }
+
             // Spawn powerups
             powerupSpawnTimer--;
             if (powerupSpawnTimer <= 0) {
@@ -992,6 +1155,12 @@
                         c.y += dy / dist * 5;
                     }
                 }
+            });
+
+            // Update candy (flies independently with sine wave)
+            candyItems.forEach(c => {
+                c.x -= (spd * 0.5 + c.speed); // candy flies on its own
+                c.y = c.baseY + Math.sin(c.frame * c.waveFreq * 60) * c.waveAmp;
             });
 
             // Update powerups
@@ -1027,6 +1196,24 @@
                     emitCoinParticles(c.x + c.w / 2, c.y + c.h / 2);
                     addFloatingText(c.x, c.y - 10, `+${val}`, '#ffd700');
                     SFX.coin();
+                    return false;
+                }
+                return true;
+            });
+
+            // Collision: candy
+            candyItems = candyItems.filter(c => {
+                if (c.x < -40) return false;
+                const floatY = Math.sin(c.frame * 3) * c.waveAmp * 0.3;
+                const candyRect = { x: c.x, y: c.y + floatY - 4, w: c.w, h: c.h };
+                if (rectsOverlap(pr, candyRect)) {
+                    const val = player.doubleTimer > 0 ? c.type.points * 2 : c.type.points;
+                    score += val;
+                    combo++;
+                    comboTimer = 90;
+                    emitCandyParticles(c.x + c.w / 2, c.y + c.h / 2 + floatY, c.type.color1);
+                    addFloatingText(c.x, c.y - 10, `${c.type.emoji} +${val}`, c.type.color1);
+                    SFX.candy();
                     return false;
                 }
                 return true;
@@ -1079,6 +1266,7 @@
             drawGround();
             obstacles.forEach(drawObstacle);
             coinItems.forEach(drawCoin);
+            candyItems.forEach(drawCandy);
             powerups.forEach(drawPowerup);
             drawParticles();
             drawNinja();
@@ -1122,9 +1310,9 @@
             player.y = GROUND_Y; player.dy = 0; player.jumps = 0;
             player.ducking = false;
             player.shieldTimer = 0; player.magnetTimer = 0; player.doubleTimer = 0;
-            obstacles = []; coinItems = []; powerups = [];
+            obstacles = []; coinItems = []; candyItems = []; powerups = [];
             particles = []; floatingTexts = [];
-            spawnTimer = 80; coinSpawnTimer = 60; powerupSpawnTimer = 200;
+            spawnTimer = 80; coinSpawnTimer = 60; candySpawnTimer = 100; powerupSpawnTimer = 200;
         }
 
         function gameOver() {
