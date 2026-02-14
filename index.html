@@ -1382,18 +1382,34 @@
                 }
             });
 
-            // Bottom prompt
-            ctx.fillStyle = 'rgba(255,255,255,0.5)';
-            ctx.font = '12px Outfit';
+            // Bottom hint
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx.font = '11px Outfit';
             ctx.textAlign = 'center';
-            ctx.fillText('◀ ▶ 方向鍵選擇  |  點擊角色卡片選擇', BASE_W / 2, BASE_H - 42);
+            ctx.fillText('點擊選擇角色，再點一次確認出發', BASE_W / 2, BASE_H - 58);
 
-            const blink = Math.sin(Date.now() * 0.005) > 0;
-            if (blink) {
-                ctx.fillStyle = '#ffdd57';
-                ctx.font = 'bold 15px Outfit';
-                ctx.fillText('空白鍵 / Enter 確認出發！', BASE_W / 2, BASE_H - 20);
-            }
+            // GO button
+            const btnX = BASE_W / 2 - 80, btnY = BASE_H - 52, btnW = 160, btnH = 36;
+            const pulse = Math.sin(Date.now() * 0.005) * 0.15 + 0.85;
+            ctx.save();
+            ctx.translate(BASE_W / 2, btnY + btnH / 2);
+            ctx.scale(pulse, pulse);
+            ctx.translate(-BASE_W / 2, -(btnY + btnH / 2));
+            // Button glow
+            ctx.shadowColor = CHAR_DATA[selectedChar].color;
+            ctx.shadowBlur = 15;
+            // Button background
+            ctx.fillStyle = CHAR_DATA[selectedChar].color;
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            roundRect(ctx, btnX, btnY, btnW, btnH, 18);
+            ctx.shadowBlur = 0;
+            // Button text
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 16px Outfit';
+            ctx.textAlign = 'center';
+            ctx.fillText('🚀 出發！GO!', BASE_W / 2, btnY + btnH / 2 + 6);
+            ctx.restore();
         }
 
         // --- Game Over Screen ---
@@ -1752,12 +1768,24 @@
         }
 
         function handleSelectClick(cx, cy) {
+            // Check GO button at bottom
+            const goBtn = { x: BASE_W / 2 - 80, y: BASE_H - 52, w: 160, h: 36 };
+            if (cx >= goBtn.x && cx <= goBtn.x + goBtn.w && cy >= goBtn.y && cy <= goBtn.y + goBtn.h) {
+                startGame();
+                return;
+            }
+            // Check character cards
             const cards = getCharCardRects();
             for (let i = 0; i < cards.length; i++) {
                 const c = cards[i];
                 if (cx >= c.x && cx <= c.x + c.w && cy >= c.y && cy <= c.y + c.h) {
-                    selectedChar = i;
-                    SFX.coin();
+                    if (selectedChar === i) {
+                        // Tap same card again = confirm & start
+                        startGame();
+                    } else {
+                        selectedChar = i;
+                        SFX.coin();
+                    }
                     return;
                 }
             }
